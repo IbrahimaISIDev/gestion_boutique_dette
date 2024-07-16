@@ -5,6 +5,7 @@ namespace Src\App\Model;
 use Src\Core\Model\Model;
 use Src\App\Entity\ClientEntity;
 use Src\Core\Database\MysqlDatabase;
+use ReflectionClass;
 
 class ClientModel extends Model
 {
@@ -27,12 +28,8 @@ class ClientModel extends Model
         $motDePasse = password_hash('Passer123', PASSWORD_DEFAULT);
 
         $query = "INSERT INTO clients (nom, prenom, email, telephone, photo_url, mot_de_passe)
-              VALUES (?, ?, ?, ?, ?, ?)";
+                  VALUES (?, ?, ?, ?, ?, ?)";
         $params = [$nom, $prenom, $email, $telephone, $photoUrl, $motDePasse];
-
-        // Log the query and the parameters
-        error_log('Requête SQL : ' . $query);
-        error_log('Paramètres : ' . json_encode($params));
 
         try {
             $stmt = $this->db->getPDO()->prepare($query);
@@ -49,27 +46,24 @@ class ClientModel extends Model
         }
     }
 
-    // Test the database connection
-    public function testerConnexion()
-    {
-        $query = "SELECT 1";
-        try {
-            $stmt = $this->db->getPDO()->prepare($query);
-            $result = $stmt->execute();
-            if ($result) {
-                error_log('Connexion à la base de données réussie.');
-            } else {
-                error_log('Échec de la connexion à la base de données.');
-            }
-            return $result;
-        } catch (\PDOException $e) {
-            error_log('Erreur de connexion: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-
-
+    // // Test the database connection
+    // public function testerConnexion()
+    // {
+    //     $query = "SELECT 1";
+    //     try {
+    //         $stmt = $this->db->getPDO()->prepare($query);
+    //         $result = $stmt->execute();
+    //         if ($result) {
+    //             error_log('Connexion à la base de données réussie.');
+    //         } else {
+    //             error_log('Échec de la connexion à la base de données.');
+    //         }
+    //         return $result;
+    //     } catch (\PDOException $e) {
+    //         error_log('Erreur de connexion: ' . $e->getMessage());
+    //         return false;
+    //     }
+    // }
     public function getClientByTelephone($telephone)
     {
         try {
@@ -89,7 +83,8 @@ class ClientModel extends Model
             $stmt = $this->db->getPDO()->prepare("SELECT COUNT(*) FROM clients WHERE telephone = :telephone");
             $stmt->bindParam(':telephone', $telephone);
             $stmt->execute();
-            return $stmt->fetchColumn() > 0;
+            $count = $stmt->fetchColumn();
+            return $count > 0;
         } catch (\PDOException $e) {
             error_log('Erreur lors de la vérification du numéro de téléphone: ' . $e->getMessage());
             return false;
@@ -136,19 +131,44 @@ class ClientModel extends Model
         }
     }
 
-    public function getTotalDettes($clientId)
+    public function getTotalDetteByClientId($clientId)
     {
         try {
-            $sql = "SELECT montantGlobale as total FROM Dette WHERE utilisateur_id = :client_id";
+            // Calcul du montant initial
+            $sql = "SELECT SUM(montant_initial) AS montant_initial 
+                FROM dettes 
+                WHERE client_id = :client_id";
             $stmt = $this->db->getPDO()->prepare($sql);
             $stmt->execute(['client_id' => $clientId]);
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-            return $result['total'] ?? 0;
+            $montant_initial = $stmt->fetch(\PDO::FETCH_ASSOC)['montant_initial'] ?? 0;
+
+            // Calcul du montant versé
+            $sql = "SELECT SUM(montant) AS montant_verser 
+                FROM paiements 
+                WHERE dette_id IN (SELECT id FROM dettes WHERE client_id = :client_id)";
+            $stmt = $this->db->getPDO()->prepare($sql);
+            $stmt->execute(['client_id' => $clientId]);
+            $montant_verser = $stmt->fetch(\PDO::FETCH_ASSOC)['montant_verser'] ?? 0;
+
+            // Calcul du montant restant
+            $montant_restant = $montant_initial - $montant_verser;
+
+            return [
+                'montant_initial' => $montant_initial,
+                'montant_verser' => $montant_verser,
+                'montant_restant' => $montant_restant
+            ];
         } catch (\PDOException $e) {
-            error_log('Erreur lors de la récupération du montant total des dettes: ' . $e->getMessage());
-            return 0;
+            error_log('Erreur lors de la récupération du total des dettes: ' . $e->getMessage());
+            return [
+                'montant_initial' => 0,
+                'montant_verser' => 0,
+                'montant_restant' => 0
+            ];
         }
     }
+
+
 
     public function getMontantVerse($clientId)
     {
@@ -164,19 +184,7 @@ class ClientModel extends Model
         }
     }
 
-    public function getMontantRestant($clientId)
-    {
-        try {
-            $sql = "SELECT p.montantRestant FROM Paiement p JOIN Dette d ON p.dette_id = d.id WHERE d.utilisateur_id = :client_id ORDER BY p.date DESC LIMIT 1";
-            $stmt = $this->db->getPDO()->prepare($sql);
-            $stmt->execute(['client_id' => $clientId]);
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-            return $result['montantRestant'] ?? $this->getTotalDettes($clientId);
-        } catch (\PDOException $e) {
-            error_log('Erreur lors de la récupération du montant restant: ' . $e->getMessage());
-            return $this->getTotalDettes($clientId);
-        }
-    }
+
 
     public function getClientById($id)
     {
@@ -204,5 +212,33 @@ class ClientModel extends Model
             error_log('Erreur lors de la récupération de tous les clients: ' . $e->getMessage());
             return false;
         }
+    }
+    // ClientModel.php
+    public function obtenirClientParId($clientId)
+    {
+        $query = "SELECT * FROM clients WHERE id = :id";
+        $params = [':id' => $clientId];
+        $result = $this->database->query($query, $params);
+
+        if ($result && $result->rowCount() > 0) {
+            $clientData = $result->fetch();
+
+            // Utilisation de ReflectionClass pour initialiser ClientEntity
+            $clientEntity = new ClientEntity();
+            $reflectionClass = new ReflectionClass(ClientEntity::class);
+
+            foreach ($clientData as $key => $value) {
+                if ($reflectionClass->hasProperty($key)) {
+                    $property = $reflectionClass->getProperty($key);
+                    $property->setAccessible(true); // Permet d'accéder aux propriétés privées
+                    $property->setValue($clientEntity, $value);
+                }
+            }
+
+            return $clientEntity;
+        }
+        
+
+        return null; // Retourner null si aucun client trouvé
     }
 }

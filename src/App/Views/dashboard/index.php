@@ -1,15 +1,13 @@
 <?php
 
-// Inclusion de vos dépendances et initialisations nécessaires
-namespace Src\Core;
+$pdo = require __DIR__ . '/../../../../config/config.php'; // Chargement du fichier de configuration
 
 use Src\Core\Validator;
 use Src\App\Model\ClientModel;
 use Src\Core\Database\MysqlDatabase;
 
-
-// Instanciation de MysqlDatabase
-$db = new MysqlDatabase();
+// Instanciation de MysqlDatabase avec $pdo défini dans config.php
+$db = new MysqlDatabase($pdo);
 $errors = [];
 
 // Vérifie si le formulaire est soumis
@@ -55,7 +53,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$client = null;
+$totauxDette = null;
+$dettes = [];
+
+// Ajout de la recherche par téléphone
+if (isset($_POST['action']) && $_POST['action'] === 'searchClient') {
+    $telephone = $_POST['telephone'] ?? null;
+
+    if ($telephone) {
+        $clientModel = new ClientModel($db);
+        $client = $clientModel->getClientByTelephone($telephone);
+
+        if ($client) {
+            $dettes = $clientModel->getDetteByClientId($client['id']);
+            $totalDette = 0;
+            $totalVerse = 0;
+            foreach ($dettes as $dette) {
+                $totalDette += $dette['montant_initial'];
+                $totalVerse += $dette['montant_verser'];
+            }
+            $totalRestant = $totalDette - $totalVerse;
+            $totauxDette = [
+                'montant_initial' => $totalDette,
+                'montant_verser' => $totalVerse,
+                'montant_restant' => $totalRestant,
+            ];
+        } else {
+            $errors['telephone'][] = "Aucun client trouvé avec ce numéro de téléphone.";
+        }
+    }
+}
+
 ?>
+
+
 
 
 
@@ -107,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="mb-4">
                         <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" id="email" name="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" value="<?php echo isset($_SESSION['form_data']['email']) ? htmlspecialchars($_SESSION['form_data']['email']) : ''; ?>">
+                        <input type="texte" id="email" name="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" value="<?php echo isset($_SESSION['form_data']['email']) ? htmlspecialchars($_SESSION['form_data']['email']) : ''; ?>">
                         <?php if (isset($errors['email'])) : ?>
                             <p class="text-red-500 text-xs italic"><?= $errors['email'][0] ?></p>
                         <?php endif; ?>
@@ -133,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </form>
             </div>
 
-            <!-- Suivie Dette Section -->
+            <!-- Suivi Dette Section -->
             <div class="bg-gray-200 p-6 rounded-lg shadow-lg">
                 <h2 class="text-2xl font-bold mb-4">Suivi de Dette</h2>
                 <!-- Formulaire de recherche -->
@@ -154,39 +186,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="flex flex-col gap-4">
                         <div>
                             <label for="client-nom" class="block text-sm font-medium text-gray-700">Nom :</label>
-                            <input type="text" id="client-nom" value="<?= $client['nom'] ?? '' ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                            <input type="text" id="client-nom" value="<?= htmlspecialchars($client['nom']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                         </div>
                         <div>
                             <label for="client-prenom" class="block text-sm font-medium text-gray-700">Prénom :</label>
-                            <input type="text" id="client-prenom" value="<?= $client['prenom'] ?? '' ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                            <input type="text" id="client-prenom" value="<?= htmlspecialchars($client['prenom']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                         </div>
                         <div>
                             <label for="client-telephone" class="block text-sm font-medium text-gray-700">Téléphone :</label>
-                            <input type="text" id="client-telephone" value="<?= $client['telephone'] ?? '' ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                            <input type="text" id="client-telephone" value="<?= htmlspecialchars($client['telephone']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                         </div>
                     </div>
-                    <?php if (isset($dette) && !empty($dette)) : ?>
+
+                    <!-- Boutons Suivi Dette et Nouvelle Dette -->
+                    <div class="flex justify-center gap-4 mt-4">
+                        <button class="bg-green-500 text-white p-2 rounded-md" onclick="window.location.href='/suivi-dette?client_id=<?= $client['id'] ?>'">Suivi Dette</button>
+                        <button class="bg-blue-500 text-white p-2 rounded-md" onclick="window.location.href='/nouvelle-dette?client_id=<?= $client['id'] ?>'">Nouvelle Dette</button>
+                    </div>
+
+                    <?php if (isset($totauxDette)) : ?>
                         <h2 class="text-xl font-bold mt-8">Détails de la dette</h2>
                         <div class="space-y-4">
-                            <?php foreach ($dette as $uneDette) : ?>
-                                <div class="bg-white p-4 rounded-lg shadow-md">
-                                    <div>
-                                        <label for="total-dette" class="block text-sm font-medium text-gray-700">Somme Total Dette :</label>
-                                        <input type="text" id="montant_initial" value="<?= htmlspecialchars($uneDette['montant_initial']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
-                                    </div>
-                                    <div>
-                                        <label for="montant-versee" class="block text-sm font-medium text-gray-700">Montant Versé :</label>
-                                        <input type="text" id="montant-verser" value="<?= htmlspecialchars($uneDette['montant_verser']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
-                                    </div>
-                                    <div>
-                                        <label for="montant-restant" class="block text-sm font-medium text-gray-700">Montant Restant :</label>
-                                        <input type="text" id="montant_restant" value="<?= htmlspecialchars($uneDette['montant_restant']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
-                                    </div>
+                            <div class="bg-white p-4 rounded-lg shadow-md">
+                                <div>
+                                    <label for="total-dette" class="block text-sm font-medium text-gray-700">Somme Total Dette :</label>
+                                    <input type="text" id="montant_initial" value="<?= htmlspecialchars($totauxDette['montant_initial']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                                 </div>
-                            <?php endforeach; ?>
+                                <div>
+                                    <label for="montant-versee" class="block text-sm font-medium text-gray-700">Montant Versé :</label>
+                                    <input type="text" id="montant-verser" value="<?= htmlspecialchars($totauxDette['montant_verser']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                                </div>
+                                <div>
+                                    <label for="montant-restant" class="block text-sm font-medium text-gray-700">Montant Restant :</label>
+                                    <input type="text" id="montant_restant" value="<?= htmlspecialchars($totauxDette['montant_restant']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                                </div>
+                            </div>
                         </div>
                     <?php else : ?>
-                        <p class="mt-4">Aucune dette trouvée pour ce client.</p>
+                        <p>Aucune dette trouvée pour ce client.</p>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
@@ -194,9 +231,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white text-center py-4">
+    <!-- <footer class="bg-gray-900 text-white text-center py-4">
         &copy; <?= date('Y-m-d') ?> Boutique Diallo. Tous droits réservés.
-    </footer>
+    </footer> -->
 
     <!-- Scripts -->
     <script>

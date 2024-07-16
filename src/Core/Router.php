@@ -4,6 +4,8 @@ namespace Src\Core;
 
 use ReflectionClass;
 use Src\App\Controller\ErrorController;
+use Src\Core\Database\MysqlDatabase;
+use Src\Core\Session; // Assurez-vous que le chemin vers Session est correct
 
 class Router
 {
@@ -27,7 +29,7 @@ class Router
 
     public static function routePage($method, $uri)
     {
-        $basePath = '/Diallo_Lebalma/public';
+        $basePath = '/Diallo_Lebalmaa1/public';
         $uri = str_replace($basePath, '', $uri);
         $uri = strtok($uri, '?');
         $uri = preg_replace('#/{2,}#', '/', $uri);
@@ -55,8 +57,22 @@ class Router
                             $dependencyClass = $parameter->getClass();
                             if ($dependencyClass !== null) {
                                 $dependencyClassName = $dependencyClass->getName();
-                                $dependencyInstance = new $dependencyClassName(); // Instanciation automatique de la dépendance
-                                $dependencies[] = $dependencyInstance;
+                                if ($dependencyClassName === MysqlDatabase::class) {
+                                    // Instanciation de MysqlDatabase avec PDO
+                                    require_once __DIR__ . '/../../config/config.php'; // Assurez-vous que le chemin vers config.php est correct
+                                    $pdo = $pdo ?? null;
+
+                                    if (!$pdo) {
+                                        throw new \Exception('PDO instance is not defined');
+                                    }
+
+                                    $dependencies[] = new MysqlDatabase($pdo);
+                                } elseif ($dependencyClassName === Session::class) {
+                                    // Instanciation de Session si c'est la dépendance attendue
+                                    $dependencies[] = new Session();
+                                } else {
+                                    throw new \Exception("Dépendance non gérée pour {$dependencyClassName}");
+                                }
                             } else {
                                 throw new \Exception("Impossible de résoudre la dépendance pour {$parameter->getName()}");
                             }

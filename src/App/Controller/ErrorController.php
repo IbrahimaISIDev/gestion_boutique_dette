@@ -8,7 +8,7 @@ class ErrorController
 {
     public function error404()
     {
-        echo "Page non trouvée";
+        echo "Page non trouvée  !!!!! Vas là-bas";
     }
 }
 

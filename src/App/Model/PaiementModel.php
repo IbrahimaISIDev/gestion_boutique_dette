@@ -1,8 +1,10 @@
 <?php
+
 namespace Src\App\Model;
 
 use Src\Core\Database\MysqlDatabase;
 use Src\App\Entity\PaiementEntity;
+use PDOException;
 
 class PaiementModel
 {
@@ -13,7 +15,6 @@ class PaiementModel
         $this->db = $db;
     }
 
-    // Ajoutez cette nouvelle méthode
     public function getPaiementsRecents($limit = 5)
     {
         $sql = "SELECT p.*, d.client_id FROM paiements p 
@@ -57,5 +58,20 @@ class PaiementModel
         }
 
         return $paiements;
+    }
+
+    public function payer($detteId, $montantVerse)
+    {
+        try {
+            $query = "UPDATE dettes SET montant_paye = montant_paye + :montant WHERE id = :detteId";
+            $params = [
+                'montant' => $montantVerse,
+                'detteId' => $detteId
+            ];
+            $this->db->execute($query, $params);
+        } catch (PDOException $e) {
+            // Capture and rethrow PDOException
+            throw new PDOException("Erreur lors du paiement de la dette : " . $e->getMessage());
+        }
     }
 }

@@ -15,7 +15,12 @@ abstract class Controller
     protected function renderView($view, $data = [])
     {
         extract($data);
-        require_once "/var/www/html/Diallo_Lebalmaa1/src/App/Views/" .$view. ".php";
+        $viewPath = dirname(__DIR__) . "/App/Views/{$view}.php";
+        if (file_exists($viewPath)) {
+            require_once $viewPath;
+        } else {
+            throw new \Exception("View file not found: {$viewPath}");
+        }
     }
 
     protected function redirect($url)

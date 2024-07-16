@@ -1,5 +1,6 @@
 <?php
 
+
 namespace Src\App\Controller;
 
 use Src\Core\Controller;
@@ -14,8 +15,9 @@ class ClientController extends Controller
     public function __construct()
     {
         parent::__construct();
-        $db = new MysqlDatabase();
-        $this->clientModel = new ClientModel($db);
+        $pdo = require __DIR__ . '/../../../config/config.php';
+        $database = new MysqlDatabase($pdo);
+        $this->clientModel = new ClientModel($database);
     }
 
     public function index()
@@ -113,7 +115,7 @@ class ClientController extends Controller
                 $dette = $this->clientModel->getDetteByClientId($client['id']);
                 $this->renderView('dashboard/index', [
                     'client' => $client,
-                    'dette' => $dette // Passer les détails des dettes à la vue
+                    'dette' => $dette
                 ]);
             } else {
                 $this->session->setFlash('error', 'Aucun client trouvé');

@@ -3,27 +3,14 @@
 namespace Src\Core\Database;
 
 use PDO;
-use PDOException;
 
 class MysqlDatabase
 {
     private $pdo;
 
-    public function __construct()
+    public function __construct(PDO $pdo)
     {
-        $host = $_ENV['DB_HOST'];
-        $db   = $_ENV['DB_NAME'];
-        $user = $_ENV['DB_USER'];
-        $pass = $_ENV['DB_PASS'];
-
-        $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-
-        try {
-            $this->pdo = new PDO($dsn, $user, $pass);
-            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch (PDOException $e) {
-            die("Erreur de connexion : " . $e->getMessage());
-        }
+        $this->pdo = $pdo;
     }
 
     public function query($sql, $params = [])
@@ -33,8 +20,23 @@ class MysqlDatabase
         return $stmt;
     }
 
+    // PREPARE statement
+
+    public function prepare($sql)
+    {
+        return $this->pdo->prepare($sql);
+    }
+    public function execute($query, $params = [])
+    {
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute($params);
+        return $stmt;
+    }
+
     public function getPdo()
     {
         return $this->pdo;
     }
+
+
 }

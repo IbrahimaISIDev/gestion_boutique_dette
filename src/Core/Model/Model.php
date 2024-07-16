@@ -63,7 +63,6 @@ abstract class Model
         $sql = "DELETE FROM {$this->table} WHERE id = :id";
         return $this->query($sql, ['id' => $id]);
     }
-
     public function update($id, $data)
     {
         $fields = "";
