@@ -37,6 +37,28 @@ class PaiementModel
 
         return $paiements;
     }
+    public function getMontantVerseParDetteId($detteId)
+    {
+        $sql = "SELECT SUM(montant_verser) AS total FROM paiements WHERE dette_id = ?";
+        $stmt = $this->db->getPDO()->prepare($sql);
+        $stmt->execute([$detteId]);
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $result['total'] ?? 0;
+    }
+
+    public function obtenirClientParId($clientId)
+    {
+        $sql = "SELECT * FROM clients WHERE id = ?";
+        $stmt = $this->db->getPDO()->prepare($sql);
+        $stmt->execute([$clientId]);
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($result) {
+            return (object) $result; // Return as object or custom ClientEntity
+        } else {
+            return null; // or throw an exception if client not found
+        }
+    }
 }
 
 // namespace Src\App\Model;

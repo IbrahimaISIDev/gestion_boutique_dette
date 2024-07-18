@@ -46,24 +46,6 @@ class ClientModel extends Model
         }
     }
 
-    // // Test the database connection
-    // public function testerConnexion()
-    // {
-    //     $query = "SELECT 1";
-    //     try {
-    //         $stmt = $this->db->getPDO()->prepare($query);
-    //         $result = $stmt->execute();
-    //         if ($result) {
-    //             error_log('Connexion à la base de données réussie.');
-    //         } else {
-    //             error_log('Échec de la connexion à la base de données.');
-    //         }
-    //         return $result;
-    //     } catch (\PDOException $e) {
-    //         error_log('Erreur de connexion: ' . $e->getMessage());
-    //         return false;
-    //     }
-    // }
     public function getClientByTelephone($telephone)
     {
         try {
@@ -91,30 +73,17 @@ class ClientModel extends Model
         }
     }
 
-    public function getMontantVersee($clientId)
+    public function getMontantVerserParDette($detteId)
     {
         try {
-            $sql = "SELECT SUM(montant) AS total FROM paiement WHERE client_id = :clientId";
+            $sql = "SELECT SUM(montant_verser) AS total FROM paiements WHERE dette_id = :dette_id";
             $stmt = $this->db->getPDO()->prepare($sql);
-            $stmt->execute(['clientId' => $clientId]);
+            $stmt->execute(['dette_id' => $detteId]);
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
             return $result['total'] ?? 0;
         } catch (\PDOException $e) {
-            error_log('Erreur lors de la récupération du montant versé par client: ' . $e->getMessage());
+            error_log('Erreur lors de la récupération du montant versé pour la dette: ' . $e->getMessage());
             return 0;
-        }
-    }
-
-    public function getUserByPhone($phone)
-    {
-        try {
-            $sql = "SELECT * FROM clients WHERE telephone = :telephone";
-            $stmt = $this->db->getPDO()->prepare($sql);
-            $stmt->execute(['telephone' => $phone]);
-            return $stmt->fetch(\PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
-            error_log('Erreur lors de la récupération du client par téléphone: ' . $e->getMessage());
-            return false;
         }
     }
 
@@ -134,23 +103,20 @@ class ClientModel extends Model
     public function getTotalDetteByClientId($clientId)
     {
         try {
-            // Calcul du montant initial
             $sql = "SELECT SUM(montant_initial) AS montant_initial 
-                FROM dettes 
-                WHERE client_id = :client_id";
+                    FROM dettes 
+                    WHERE client_id = :client_id";
             $stmt = $this->db->getPDO()->prepare($sql);
             $stmt->execute(['client_id' => $clientId]);
             $montant_initial = $stmt->fetch(\PDO::FETCH_ASSOC)['montant_initial'] ?? 0;
 
-            // Calcul du montant versé
-            $sql = "SELECT SUM(montant) AS montant_verser 
-                FROM paiements 
-                WHERE dette_id IN (SELECT id FROM dettes WHERE client_id = :client_id)";
+            $sql = "SELECT SUM(montant_verser) AS montant_verser 
+                    FROM paiements 
+                    WHERE dette_id IN (SELECT id FROM dettes WHERE client_id = :client_id)";
             $stmt = $this->db->getPDO()->prepare($sql);
             $stmt->execute(['client_id' => $clientId]);
             $montant_verser = $stmt->fetch(\PDO::FETCH_ASSOC)['montant_verser'] ?? 0;
 
-            // Calcul du montant restant
             $montant_restant = $montant_initial - $montant_verser;
 
             return [
@@ -168,30 +134,12 @@ class ClientModel extends Model
         }
     }
 
-
-
-    public function getMontantVerse($clientId)
-    {
-        try {
-            $sql = "SELECT SUM(p.montantVerser) as total FROM Paiement p JOIN Dette d ON p.dette_id = d.id WHERE d.utilisateur_id = :client_id";
-            $stmt = $this->db->getPDO()->prepare($sql);
-            $stmt->execute(['client_id' => $clientId]);
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-            return $result['total'] ?? 0;
-        } catch (\PDOException $e) {
-            error_log('Erreur lors de la récupération du montant versé: ' . $e->getMessage());
-            return 0;
-        }
-    }
-
-
-
     public function getClientById($id)
     {
         try {
             $sql = "SELECT c.*, d.montant_initial, d.montant_verser, d.montant_restant 
                     FROM clients c 
-                    LEFT JOIN dette d ON c.id = d.client_id 
+                    LEFT JOIN dettes d ON c.id = d.client_id 
                     WHERE c.id = :id";
             $stmt = $this->db->getPDO()->prepare($sql);
             $stmt->execute(['id' => $id]);
@@ -213,13 +161,7 @@ class ClientModel extends Model
             return false;
         }
     }
-    // ClientModel.php
 
-    /**
-     * Obtenir un client par ID
-     * @param int $clientId
-     * @return ClientEntity|null
-     */
     public function obtenirClientParId(int $clientId)
     {
         $sql = "SELECT * FROM clients WHERE id = ?";
@@ -227,7 +169,6 @@ class ClientModel extends Model
         $row = $result->fetch();
 
         if (!$row) {
-            // Ajout d'un message de débogage si aucun client trouvé
             echo "Aucun client trouvé avec l'ID : $clientId";
             return null;
         }
@@ -238,8 +179,8 @@ class ClientModel extends Model
         foreach ($row as $property => $value) {
             if ($reflectionClass->hasProperty($property)) {
                 $prop = $reflectionClass->getProperty($property);
-                $prop->setAccessible(true); // Rendre la propriété accessible
-                $prop->setValue($client, $value); // Définir la valeur de la propriété
+                $prop->setAccessible(true);
+                $prop->setValue($client, $value);
             }
         }
 
@@ -250,5 +191,14 @@ class ClientModel extends Model
     {
         $query = "SELECT * FROM clients";
         return $this->database->query($query);
+    }
+
+    public function suiviDette($clientId)
+    {
+        $dettes = $this->getDetteByClientId($clientId);
+        foreach ($dettes as &$dette) {
+            $dette['montant_verser'] = $this->getMontantVerserParDette($dette['id']);
+        }
+        return $dettes;
     }
 }

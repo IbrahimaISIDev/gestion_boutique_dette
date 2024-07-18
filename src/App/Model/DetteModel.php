@@ -119,14 +119,51 @@ class DetteModel
 
 
     // Méthode pour mettre à jour le montant restant d'une dette
-    public function mettreAJourMontantRestant($detteId, $nouveauMontant)
+    public function mettreAJourMontantRestant($detteId, $nouveauMontantRestant)
     {
-        $sql = "UPDATE dettes SET montant_restant = ? WHERE id = ?";
-        return $this->db->query($sql, [$nouveauMontant, $detteId]);
+        $query = "UPDATE dettes SET montant_restant = :montant_restant WHERE id = :id";
+        $params = [
+            ':montant_restant' => $nouveauMontantRestant,
+            ':id' => $detteId
+        ];
+        return $this->db->query($query, $params);
+    }
+    public function getMontantVerseTotal($detteId)
+    {
+        $query = "SELECT SUM(montant_verser) AS total_verser FROM paiements WHERE dette_id = :dette_id";
+        $params = [':dette_id' => $detteId];
+        return $this->db->query($query, $params)->fetch()['total_verser'] ?? 0;
     }
     public function mettreAJourMontantVerser($detteId, $montantVerser)
     {
         $sql = "UPDATE dettes SET montant_verser = montant_verser + ? WHERE id = ?";
         return $this->db->query($sql, [$montantVerser, $detteId]);
     }
+
+    public function getMontantVerserParDette($detteId)
+    {
+        try {
+            $sql = "SELECT SUM(montant_verser) AS total FROM paiements WHERE dette_id = :detteId";
+            $stmt = $this->db->getPDO()->prepare($sql);
+            $stmt->execute(['detteId' => $detteId]);
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['total'] ?? 0;
+        } catch (\PDOException $e) {
+            error_log('Erreur lors de la récupération du montant versé par dette: ' . $e->getMessage());
+            return 0;
+        }
+    }
+     // Ajoutez également votre méthode getDetteByClientId ici
+     public function getDetteByClientId($clientId)
+     {
+         try {
+             $sql = "SELECT * FROM dettes WHERE client_id = :client_id";
+             $stmt = $this->db->getPDO()->prepare($sql);
+             $stmt->execute(['client_id' => $clientId]);
+             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+         } catch (\PDOException $e) {
+             error_log('Erreur lors de la récupération des dettes du client: ' . $e->getMessage());
+             return [];
+         }
+     }
 }

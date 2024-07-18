@@ -5,14 +5,18 @@ namespace Src\App\Controller;
 use Src\App\Model\PaiementModel;
 use Src\App\Model\DetteModel;
 use Src\App\Model\FactureModel;
+use Src\App\Model\ClientModel; // Import ClientModel
 use Src\Core\Controller;
 use Src\Core\Database\MysqlDatabase;
-
+use FPDF;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 class PaiementController extends Controller
 {
     private $paiementModel;
     private $detteModel;
-    private $factureModel; // Ajout de la propriété $factureModel
+    private $factureModel;
+    private $clientModel; // Declare clientModel as a property
 
     public function __construct()
     {
@@ -20,7 +24,8 @@ class PaiementController extends Controller
         $database = new MysqlDatabase($pdo);
         $this->paiementModel = new PaiementModel($database);
         $this->detteModel = new DetteModel($database);
-        $this->factureModel = new FactureModel($database); // Initialisation du modèle de facture
+        $this->factureModel = new FactureModel($database);
+        $this->clientModel = new ClientModel($database); // Initialize clientModel
     }
 
     public function afficherFormulairePaiement()
@@ -44,41 +49,100 @@ class PaiementController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $detteId = $_POST['idDette'] ?? null;
-            $montantVerser = $_POST['montant_verser'] ?? null; // Correction de la variable $montantVerser
+            $montantVerse = $_POST['montant_verser'] ?? null;
 
-            if ($detteId && $montantVerser) {
+            if ($detteId !== null && $montantVerse !== null) {
                 $dette = $this->detteModel->obtenirDetteParId($detteId);
 
-                if ($dette) {
-                    $nouveauMontantRestant = $dette->getMontantRestant() - $montantVerser;
+                if ($dette !== null) {
+                    $nouveauMontantRestant = $dette->montant_restant - $montantVerse;
 
                     if ($nouveauMontantRestant >= 0) {
-                        // Mettre à jour le montant restant de la dette
                         $this->detteModel->mettreAJourMontantRestant($detteId, $nouveauMontantRestant);
+                        $this->detteModel->mettreAJourMontantVerser($detteId, $montantVerse);
 
-                        // Création de la facture
-                        $datePaiement = date('Y-m-d H:i:s');
-                        $this->factureModel->creerFacture($detteId, $montantVerser, $datePaiement); // Utilisation de $montantVerser
-                        // Rediriger vers une page de confirmation ou de détails
+                        // Générer la facture
+                        $this->genererFacture($dette, $montantVerse);
+
+                        // Redirection vers les détails de la dette après le paiement
                         header('Location: /details-dette?idDette=' . $detteId);
                         exit;
                     } else {
-                        $error = 'Le montant versé ne peut pas être supérieur au montant restant.';
+                        $error = 'Le montant versé ne peut pas être supérieur au montant restant';
                     }
                 } else {
-                    $error = 'Dette non trouvée pour cet ID.';
+                    $error = 'Dette non trouvée';
                 }
             } else {
-                $error = 'ID de dette ou montant versé manquant.';
+                $error = 'ID de dette ou montant versé manquant';
             }
 
-            // Si une erreur survient, afficher à nouveau le formulaire avec l'erreur
-            $this->renderView('formulairePaiement', ['error' => $error]);
+            // Si une erreur survient, afficher à nouveau la vue avec l'erreur
+            $this->renderView('payerDette', ['error' => $error]);
         } else {
-            // Si la méthode n'est pas POST, rediriger vers une page d'erreur ou gérer selon votre logique
-            http_response_code(405); // Méthode non autorisée
-            echo 'Méthode non autorisée.';
+            // Si la méthode n'est pas POST, afficher simplement la vue pour payer la dette
+            $detteId = $_GET['idDette'] ?? null;
+
+            if ($detteId) {
+                $dette = $this->detteModel->obtenirDetteParId($detteId);
+
+                if ($dette !== null) {
+                    $this->renderView('payerDette', ['dette' => $dette]);
+                } else {
+                    $this->renderView('payerDette', ['error' => 'Dette non trouvée']);
+                }
+            } else {
+                $this->renderView('payerDette', ['error' => 'ID de dette manquant']);
+            }
         }
+    }
+
+    private function genererFacture($dette, $montantVerse)
+{
+    $client = $this->clientModel->obtenirClientParId($dette->client_id);
+    $factureId = uniqid();
+    $date = date('Y-m-d H:i:s');
+    $fileName = "facture_{$factureId}.pdf";
+    $filePath = __DIR__ . '/../../../public/factures/' . $fileName;
+
+    // Création du PDF
+    $pdf = new FPDF();
+    $pdf->AddPage();
+
+    // Titre de la facture
+    $pdf->SetFont('Arial', 'B', 16);
+    $pdf->Cell(0, 10, 'Facture de Paiement', 0, 1, 'C');
+    $pdf->Ln(10);
+
+    // Informations de la facture
+    $pdf->SetFont('Arial', '', 12);
+    $pdf->Cell(0, 10, "Facture ID: {$factureId}", 0, 1);
+    $pdf->Cell(0, 10, "Date: {$date}", 0, 1);
+    $pdf->Cell(0, 10, "Client: {$client->nom} {$client->prenom}", 0, 1);
+    $pdf->Cell(0, 10, "Montant versé: {$montantVerse} F CFA", 0, 1);
+    $pdf->Cell(0, 10, "Montant restant: {$dette->montant_restant} F CFA", 0, 1);
+    $pdf->Ln(10);
+
+    // Ajouter plus de détails selon vos besoins...
+
+    // Sauvegarde du PDF
+    $pdf->Output('F', $filePath);
+
+    // Retourner le nom du fichier pour l'affichage dans la vue HTML
+    return $fileName;
+}
+
+    public function SuiviDette($clientId)
+    {
+        // Récupération des dettes du client
+        $dettes = $this->detteModel->getDetteByClientId($clientId);
+
+        foreach ($dettes as $dette) {
+            $dette['montant_verser'] = $this->detteModel->getMontantVerserParDette($dette['id']);
+        }
+
+        // Renvoyer les dettes avec les montants versés mis à jour
+        return $dettes;
     }
 
     public function processPaiement()
@@ -114,6 +178,74 @@ class PaiementController extends Controller
             // Si la méthode n'est pas POST, rediriger vers une page d'erreur par exemple
             header('Location: /erreur');
             exit;
+        }
+    }
+
+    public function visualiserFacture()
+    {
+        $detteId = $_GET['idDette'] ?? null;
+
+        if ($detteId) {
+            $dette = $this->detteModel->obtenirDetteParId($detteId);
+            $client = $this->clientModel->obtenirClientParId($dette->client_id);
+
+            $factureId = uniqid();
+            $date = date('Y-m-d H:i:s');
+            $montantVerse = $dette->montant_verser; // Exemple, vous pouvez ajuster en fonction de vos besoins
+
+            $this->renderView('facture', [
+                'factureId' => $factureId,
+                'date' => $date,
+                'client' => $client,
+                'montantVerse' => $montantVerse,
+                'dette' => $dette
+            ]);
+        } else {
+            echo "ID de dette manquant";
+        }
+    }
+
+    public function telechargerFacture()
+    {
+        $detteId = $_GET['idDette'] ?? null;
+
+        if ($detteId) {
+            $dette = $this->detteModel->obtenirDetteParId($detteId);
+            $client = $this->clientModel->obtenirClientParId($dette->client_id);
+
+            $factureId = uniqid();
+            $date = date('Y-m-d H:i:s');
+            $montantVerse = $dette->montant_verser; // Exemple, vous pouvez ajuster en fonction de vos besoins
+
+            ob_start();
+            $this->renderView('facture', [
+                'factureId' => $factureId,
+                'date' => $date,
+                'client' => $client,
+                'montantVerse' => $montantVerse,
+                'dette' => $dette
+            ]);
+            $html = ob_get_clean();
+
+            // Options de Dompdf
+            $options = new Options();
+            $options->set('isRemoteEnabled', true);
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            // Sortie du PDF dans un fichier
+            $fileName = "facture_{$factureId}.pdf";
+            $filePath = __DIR__ . '/../../../public/factures/' . $fileName;
+            file_put_contents($filePath, $dompdf->output());
+
+            // Redirection pour télécharger le PDF
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="' . $fileName . '"');
+            readfile($filePath);
+        } else {
+            echo "ID de dette manquant";
         }
     }
 }

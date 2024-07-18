@@ -30,12 +30,14 @@ $router->post('/filtre', ['Controller' => 'DetteController', 'action' => 'suiviD
 $router->post('/details-dette', ['Controller' => 'DetteController', 'action' => 'details']);
 $router->post('/details-dette/client/{id}', ['Controller' => 'DetteController', 'action' => 'details']);
 
+// Route pour générer une facture
 $router->post('/generer-facture', ['Controller' => 'PaiementController', 'action' => 'genererFacture']);
+$router->get('/visualiser-facture', ['Controller' => 'PaiementController', 'action' => 'visualiserFacture']);
+$router->get('/telecharger-facture', ['Controller' => 'PaiementController', 'action' => 'telechargerFacture']);
 
-
-// Définir les routes pour le paiement de la dette
-Router::get('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'afficherFormulairePaiement']);
-Router::post('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'payerDette']);
+// Routes pour le paiement de la dette
+$router->get('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'afficherFormulairePaiement']);
+$router->post('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'payerDette']);
 
 // Route pour ajouter une nouvelle dette
 $router->get('/nouvelle-dette', ['Controller' => 'DetteController', 'action' => 'nouvelleDette']);
