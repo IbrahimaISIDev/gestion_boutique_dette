@@ -6,6 +6,7 @@ use ReflectionClass;
 use Src\App\Controller\ErrorController;
 use Src\Core\Database\MysqlDatabase;
 use Src\Core\Session; // Assurez-vous que le chemin vers Session est correct
+use Src\App\Controller\PaiementController; // Importez votre contrôleur de paiement ici
 
 class Router
 {
@@ -48,7 +49,7 @@ class Router
 
                 if ($reflectionClass->isInstantiable()) {
                     $constructor = $reflectionClass->getConstructor();
-                    
+
                     if ($constructor !== null) {
                         $parameters = $constructor->getParameters();
                         $dependencies = [];
@@ -108,3 +109,4 @@ class Router
         return self::$routes;
     }
 }
+

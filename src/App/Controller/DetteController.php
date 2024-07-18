@@ -4,13 +4,16 @@ namespace Src\App\Controller;
 
 use Src\App\Model\DetteModel;
 use Src\App\Model\ClientModel;
+use Src\App\Model\ArticleModel;
 use Src\Core\Controller;
 use Src\Core\Database\MysqlDatabase;
+use ReflectionClass;
 
 class DetteController extends Controller
 {
     private $detteModel;
     private $clientModel;
+    private $articleModel;
 
     public function __construct()
     {
@@ -18,6 +21,7 @@ class DetteController extends Controller
         $database = new MysqlDatabase($pdo);
         $this->detteModel = new DetteModel($database);
         $this->clientModel = new ClientModel($database);
+        $this->articleModel = new ArticleModel($pdo);
     }
 
     public function suiviDette()
@@ -69,9 +73,12 @@ class DetteController extends Controller
 
             if ($detteDetails) {
                 $clientDetails = $this->clientModel->obtenirClientParId($detteDetails->client_id);
+                $articles = $this->detteModel->obtenirArticlesParDetteId($detteId); // Récupérer les articles liés à cette dette
+
                 $this->renderView('detailsDette', [
                     'dette' => $detteDetails,
-                    'client' => $clientDetails
+                    'client' => $clientDetails,
+                    'articles' => $articles // Passez les articles à la vue
                 ]);
             } else {
                 $this->renderView('detailsDette', ['error' => 'Aucune dette trouvée pour cet ID']);
@@ -81,19 +88,144 @@ class DetteController extends Controller
         }
     }
 
+    public function detailsAvecArticles()
+    {
+        if (isset($_POST['idDette'])) {
+            $detteId = $_POST['idDette'];
+            $detteDetails = $this->detteModel->obtenirDetteParId($detteId);
+
+            if ($detteDetails) {
+                $clientDetails = $this->clientModel->obtenirClientParId($detteDetails->client_id);
+                $articles = $this->detteModel->obtenirArticlesParDetteId($detteId); // Nouvelle méthode à ajouter
+
+                $this->renderView('detailsDette', [
+                    'dette' => $detteDetails,
+                    'client' => $clientDetails,
+                    'articles' => $articles // Passer les articles à la vue
+                ]);
+            } else {
+                $this->renderView('detailsDette', ['error' => 'Aucune dette trouvée pour cet ID']);
+            }
+        } else {
+            $this->renderView('detailsDette', ['error' => 'ID de dette manquant']);
+        }
+    }
+
+    // Méthode pour afficher le formulaire de création d'une nouvelle dette
     public function nouvelleDette()
     {
+        $client = null;
+        $articles = $this->articleModel->getAllArticles();
+        $prixUnitaire = 0;
+        $selectedArticleId = null;
+
+        // Vérifiez d'abord si client_id est présent dans GET ou POST
+        $clientId = $_GET['client_id'] ?? $_POST['client_id'] ?? null;
+
+        if ($clientId) {
+            $client = $this->clientModel->obtenirClientParId($clientId);
+            error_log("Client récupéré : " . print_r($client, true)); // Log pour le débogage
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $clientId = $_POST['client_id'];
-            $montantInitial = $_POST['montant_initial'];
-            $dateCreation = date('Y-m-d H:i:s'); // Utilisez la date et l'heure actuelles
+            if (isset($_POST['article_id'])) {
+                $selectedArticleId = $_POST['article_id'];
+                $selectedArticle = $this->articleModel->getArticleById($selectedArticleId);
+                $prixUnitaire = $selectedArticle->prix_unitaire;
+            }
 
-            $this->detteModel->creerNouvelleDette($clientId, $montantInitial, $dateCreation);
+            if (isset($_POST['client_id']) && isset($_POST['quantite'])) {
+                $quantite = $_POST['quantite'];
+                $montant = $prixUnitaire * $quantite;
 
-            header('Location: /suivi-dette?client_id=' . $clientId);
-            exit;
+                // Ajoutez l'article au panier
+                $panier[] = [
+                    'article_id' => $selectedArticleId,
+                    'libelle' => $selectedArticle->libelle,
+                    'quantite' => $quantite,
+                    'montant' => $montant
+                ];
+
+                $_SESSION['panier'] = $panier;
+
+                // Rediriger ou recharger la page pour afficher le panier mis à jour
+                header('Location: nouvelleDette.php?client_id=' . $clientId);
+                exit;
+            }
+        }
+
+        // Utiliser la réflexion pour accéder aux propriétés privées de l'objet client
+        $clientData = [];
+        if ($client !== null) {
+            $reflectionClass = new ReflectionClass($client);
+            $properties = $reflectionClass->getProperties();
+            foreach ($properties as $property) {
+                $property->setAccessible(true);
+                $clientData[$property->getName()] = $property->getValue($client);
+            }
+        }
+
+        error_log("Données du client envoyées à la vue : " . print_r($clientData, true)); // Log pour le débogage
+
+        $this->renderView('nouvelleDette', [
+            'client' => $clientData,
+            'articles' => $articles,
+            'prix_unitaire' => $prixUnitaire,
+            'selected_article_id' => $selectedArticleId,
+            'panier' => $_SESSION['panier'] ?? []
+        ]);
+    }
+
+    public function payerDette()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $detteId = $_POST['idDette'] ?? null;
+            $montantVerse = $_POST['montant_verser'] ?? null;
+
+            // Log pour vérifier les données reçues
+            error_log("ID de Dette: " . print_r($detteId, true));
+            error_log("Montant Versé: " . print_r($montantVerse, true));
+
+            if ($detteId !== null && $montantVerse !== null) {
+                $dette = $this->detteModel->obtenirDetteParId($detteId);
+
+                if ($dette !== null) {
+                    $nouveauMontantRestant = $dette->montant_restant - $montantVerse;
+
+                    if ($nouveauMontantRestant >= 0) {
+                        $this->detteModel->mettreAJourMontantRestant($detteId, $nouveauMontantRestant);
+                        $this->detteModel->mettreAJourMontantVerser($detteId, $montantVerse);
+
+                        // Redirection vers les détails de la dette après le paiement
+                        header('Location: /details-dette?idDette=' . $detteId);
+                        exit;
+                    } else {
+                        $error = 'Le montant versé ne peut pas être supérieur au montant restant';
+                    }
+                } else {
+                    $error = 'Dette non trouvée';
+                }
+            } else {
+                $error = 'ID de dette ou montant versé manquant';
+            }
+
+            // Si une erreur survient, afficher à nouveau la vue avec l'erreur
+            $this->renderView('payerDette', ['error' => $error]);
         } else {
-            $this->renderView('nouvelleDette');
+            // Si la méthode n'est pas POST, afficher simplement la vue pour payer la dette
+            $detteId = $_GET['idDette'] ?? null;
+
+            if ($detteId) {
+                $dette = $this->detteModel->obtenirDetteParId($detteId);
+
+                if ($dette !== null) {
+                    $this->renderView('payerDette', ['dette' => $dette]);
+                } else {
+                    $this->renderView('payerDette', ['error' => 'Dette non trouvée']);
+                }
+            } else {
+                $this->renderView('payerDette', ['error' => 'ID de dette manquant']);
+            }
         }
     }
 }

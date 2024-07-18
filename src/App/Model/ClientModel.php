@@ -214,31 +214,41 @@ class ClientModel extends Model
         }
     }
     // ClientModel.php
-    public function obtenirClientParId($clientId)
+
+    /**
+     * Obtenir un client par ID
+     * @param int $clientId
+     * @return ClientEntity|null
+     */
+    public function obtenirClientParId(int $clientId)
     {
-        $query = "SELECT * FROM clients WHERE id = :id";
-        $params = [':id' => $clientId];
-        $result = $this->database->query($query, $params);
+        $sql = "SELECT * FROM clients WHERE id = ?";
+        $result = $this->db->query($sql, [$clientId]);
+        $row = $result->fetch();
 
-        if ($result && $result->rowCount() > 0) {
-            $clientData = $result->fetch();
-
-            // Utilisation de ReflectionClass pour initialiser ClientEntity
-            $clientEntity = new ClientEntity();
-            $reflectionClass = new ReflectionClass(ClientEntity::class);
-
-            foreach ($clientData as $key => $value) {
-                if ($reflectionClass->hasProperty($key)) {
-                    $property = $reflectionClass->getProperty($key);
-                    $property->setAccessible(true); // Permet d'accéder aux propriétés privées
-                    $property->setValue($clientEntity, $value);
-                }
-            }
-
-            return $clientEntity;
+        if (!$row) {
+            // Ajout d'un message de débogage si aucun client trouvé
+            echo "Aucun client trouvé avec l'ID : $clientId";
+            return null;
         }
-        
 
-        return null; // Retourner null si aucun client trouvé
+        $client = new ClientEntity();
+        $reflectionClass = new ReflectionClass($client);
+
+        foreach ($row as $property => $value) {
+            if ($reflectionClass->hasProperty($property)) {
+                $prop = $reflectionClass->getProperty($property);
+                $prop->setAccessible(true); // Rendre la propriété accessible
+                $prop->setValue($client, $value); // Définir la valeur de la propriété
+            }
+        }
+
+        return $client;
+    }
+
+    public function obtenirTousLesClients()
+    {
+        $query = "SELECT * FROM clients";
+        return $this->database->query($query);
     }
 }

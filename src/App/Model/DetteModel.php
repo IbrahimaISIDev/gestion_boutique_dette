@@ -6,6 +6,7 @@ namespace Src\App\Model;
 
 use Src\Core\Database\MysqlDatabase;
 use Src\App\Entity\DetteEntity;
+use Src\App\Entity\ArticleEntity; // Assurez-vous d'importer la classe ArticleEntity
 
 class DetteModel
 {
@@ -85,10 +86,47 @@ class DetteModel
         return $dettes;
     }
 
+    // Méthode pour obtenir les articles d'une dette par ID de dette
+    public function obtenirArticlesParDetteId(int $detteId)
+    {
+        $sql = "SELECT a.id, a.libelle, ad.quantite, ad.prix_unitaire
+                FROM articles a
+                INNER JOIN details_dette ad ON a.id = ad.article_id
+                WHERE ad.dette_id = ?";
+        $result = $this->db->query($sql, [$detteId]);
+        $articles = []; // Initialisation du tableau d'articles
+
+        while ($row = $result->fetch()) {
+            // Calcul du montant pour chaque article
+            $montant = $row['quantite'] * $row['prix_unitaire'];
+
+            // Instanciation de ArticleEntity avec les données récupérées
+            $article = new ArticleEntity(
+                $row['id'],
+                $row['libelle'],
+                $row['quantite'],
+                $row['prix_unitaire'],
+                $montant,
+                $detteId
+            );
+
+            $articles[] = $article; // Ajout de l'article au tableau
+        }
+
+        return $articles; // Retour du tableau d'articles
+    }
+
+
+
     // Méthode pour mettre à jour le montant restant d'une dette
     public function mettreAJourMontantRestant($detteId, $nouveauMontant)
     {
         $sql = "UPDATE dettes SET montant_restant = ? WHERE id = ?";
         return $this->db->query($sql, [$nouveauMontant, $detteId]);
+    }
+    public function mettreAJourMontantVerser($detteId, $montantVerser)
+    {
+        $sql = "UPDATE dettes SET montant_verser = montant_verser + ? WHERE id = ?";
+        return $this->db->query($sql, [$montantVerser, $detteId]);
     }
 }

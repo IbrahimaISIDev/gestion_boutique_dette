@@ -210,17 +210,18 @@ if (isset($_POST['action']) && $_POST['action'] === 'searchClient') {
                             <div class="bg-white p-4 rounded-lg shadow-md">
                                 <div>
                                     <label for="total-dette" class="block text-sm font-medium text-gray-700">Somme Total Dette :</label>
-                                    <input type="text" id="montant_initial" value="<?= htmlspecialchars($totauxDette['montant_initial']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                                    <input type="text" id="montant_initial" value="<?= htmlspecialchars($totauxDette['montant_initial'] ?? '0') ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                                 </div>
                                 <div>
                                     <label for="montant-versee" class="block text-sm font-medium text-gray-700">Montant Versé :</label>
-                                    <input type="text" id="montant-verser" value="<?= htmlspecialchars($totauxDette['montant_verser']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                                    <input type="text" id="montant-verser" value="<?= htmlspecialchars($totauxDette['montant_verser'] ?? '0') ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                                 </div>
                                 <div>
                                     <label for="montant-restant" class="block text-sm font-medium text-gray-700">Montant Restant :</label>
-                                    <input type="text" id="montant_restant" value="<?= htmlspecialchars($totauxDette['montant_restant']) ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
+                                    <input type="text" id="montant_restant" value="<?= htmlspecialchars($totauxDette['montant_restant'] ?? '0') ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" readonly>
                                 </div>
                             </div>
+
                         </div>
                     <?php else : ?>
                         <p>Aucune dette trouvée pour ce client.</p>

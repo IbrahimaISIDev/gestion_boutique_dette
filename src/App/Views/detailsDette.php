@@ -1,101 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Détails de la dette</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f4f8;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* .navbar {
-            background-color: #2d3748;
-            color: #ffffff;
-        } */
-
-        .navbar a {
-            color: #ffffff;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .navbar a:hover {
-            color: #e2e8f0;
-        }
-
-        .card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .card h2 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #1a202c;
-        }
-
-        .card p {
-            font-size: 1rem;
-            margin-bottom: 5px;
-            color: #4a5568;
-        }
-
-        .error-message {
-            color: #e53e3e;
-            font-weight: bold;
-        }
-    </style>
 </head>
 
-<body>
+<body class="bg-gray-100 font-sans">
     <!-- Navbar -->
-    <nav class="navbar py-4">
-        <div class="container mx-auto flex justify-between items-center bg-blue-500 py-4">
+    <nav class="bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-white">Gestion des Dettes</h1>
-            <a href="#" class="text-white">Accueil</a>
+            <a href="#" class="text-white hover:text-blue-200 transition duration-300">Accueil</a>
         </div>
     </nav>
 
     <!-- Content -->
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold mb-4">Détails de la dette</h1>
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Détails de la dette</h1>
         <?php if (isset($_POST['idDette'])) : ?>
-            <p class="mb-4">ID de la dette: <span class="font-semibold"><?php echo $_POST['idDette']; ?></span></p>
+            <p class="mb-6 text-lg">ID de la dette: <span class="font-semibold text-blue-600"><?php echo $_POST['idDette']; ?></span></p>
             <?php if (isset($dette)) : ?>
-                <div class="card">
-                    <h2>Informations du client</h2>
-                    <p><span class="font-semibold">Nom:</span> <?php echo $client->nom; ?></p>
-                    <p><span class="font-semibold">Prénom:</span> <?php echo $client->prenom; ?></p>
-                    <p><span class="font-semibold">Téléphone:</span> <?php echo $client->telephone; ?></p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-700">Informations du client</h2>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Nom:</span> <?php echo $client->nom; ?></p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Prénom:</span> <?php echo $client->prenom; ?></p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Email:</span> <?php echo $client->email; ?></p>
+                        <p><span class="font-semibold text-gray-600">Téléphone:</span> <?php echo $client->telephone; ?></p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-700">Informations de la dette</h2>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">ID du client:</span> <?php echo $dette->client_id; ?></p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Montant initial:</span> <?php echo $dette->montant_initial; ?> F CFA</p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Montant versé:</span> <?php echo $dette->montant_verser; ?> F CFA</p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Montant restant:</span> <?php echo $dette->montant_restant; ?> F CFA</p>
+                        <p class="mb-2"><span class="font-semibold text-gray-600">Date de création:</span> <?php echo $dette->date_creation; ?></p>
+                        <p><span class="font-semibold text-gray-600">Statut:</span> <span class="px-2 py-1 rounded <?php echo $dette->statut === 'Payé' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'; ?>"><?php echo $dette->statut; ?></span></p>
+                    </div>
                 </div>
-                <div class="card">
-                    <h2>Informations de la dette</h2>
-                    <p><span class="font-semibold">ID du client:</span> <?php echo $dette->client_id; ?></p>
-                    <p><span class="font-semibold">Montant initial:</span> <?php echo $dette->montant_initial; ?></p>
-                    <p><span class="font-semibold">Montant versé:</span> <?php echo $dette->montant_verser; ?></p>
-                    <p><span class="font-semibold">Montant restant:</span> <?php echo $dette->montant_restant; ?></p>
-                    <p><span class="font-semibold">Date de création:</span> <?php echo $dette->date_creation; ?></p>
-                    <p><span class="font-semibold">Statut:</span> <?php echo $dette->statut; ?></p>
+                <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Liste des articles de la dette</h2>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <?php foreach ($articles as $article) : ?>
+                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition duration-300">
+                                <p class="mb-2"><span class="font-semibold text-gray-600">Article:</span> <?php echo $article->libelle; ?></p>
+                                <p class="mb-2"><span class="font-semibold text-gray-600">Quantité:</span> <?php echo $article->quantite; ?></p>
+                                <p class="mb-2"><span class="font-semibold text-gray-600">Prix unitaire:</span> <?php echo $article->prix_unitaire; ?> F CFA</p>
+                                <p><span class="font-semibold text-gray-600">Montant:</span> <?php echo $article->montant; ?> F CFA</p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             <?php else : ?>
-                <p class="error-message">Erreur: Aucune dette trouvée pour l'ID <?php echo $_POST['idDette']; ?></p>
+                <p class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">Erreur: Aucune dette trouvée pour l'ID <?php echo $_POST['idDette']; ?></p>
             <?php endif; ?>
         <?php else : ?>
-            <p class="error-message">Erreur: ID de dette manquant</p>
+            <p class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">Erreur: ID de dette manquant</p>
         <?php endif; ?>
     </div>
 </body>
