@@ -70,9 +70,10 @@
                                             <button type="submit" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded transition duration-300">Détails</button>
                                         </form>
                                         <a href="/payer-dette?idDette=<?= htmlspecialchars($dette->getId()) ?>" class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300">Payer</a>
-                                        <form action="/liste-paiements/<?= htmlspecialchars($dette->getId()) ?>" method="get" class="inline">
+                                        <!-- <form action="/liste-paiements/<?= htmlspecialchars($dette->getId()) ?>" method="get" class="inline">
                                             <button type="submit" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition duration-300">Paiements</button>
-                                        </form>
+                                        </form> -->
+
                                     </div>
                                 </td>
                             </tr>

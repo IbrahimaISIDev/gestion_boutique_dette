@@ -11,6 +11,7 @@ use Src\Core\Database\MysqlDatabase;
 use FPDF;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+
 class PaiementController extends Controller
 {
     private $paiementModel;
@@ -23,7 +24,7 @@ class PaiementController extends Controller
         $pdo = require __DIR__ . '/../../../config/config.php';
         $database = new MysqlDatabase($pdo);
         $this->paiementModel = new PaiementModel($database);
-        $this->detteModel = new DetteModel($database);
+        $this->detteModel = new DetteModel($database, $pdo);
         $this->factureModel = new FactureModel($database);
         $this->clientModel = new ClientModel($database); // Initialize clientModel
     }
@@ -98,39 +99,39 @@ class PaiementController extends Controller
     }
 
     private function genererFacture($dette, $montantVerse)
-{
-    $client = $this->clientModel->obtenirClientParId($dette->client_id);
-    $factureId = uniqid();
-    $date = date('Y-m-d H:i:s');
-    $fileName = "facture_{$factureId}.pdf";
-    $filePath = __DIR__ . '/../../../public/factures/' . $fileName;
+    {
+        $client = $this->clientModel->obtenirClientParId($dette->client_id);
+        $factureId = uniqid();
+        $date = date('Y-m-d H:i:s');
+        $fileName = "facture_{$factureId}.pdf";
+        $filePath = __DIR__ . '/../../../public/factures/' . $fileName;
 
-    // Création du PDF
-    $pdf = new FPDF();
-    $pdf->AddPage();
+        // Création du PDF
+        $pdf = new FPDF();
+        $pdf->AddPage();
 
-    // Titre de la facture
-    $pdf->SetFont('Arial', 'B', 16);
-    $pdf->Cell(0, 10, 'Facture de Paiement', 0, 1, 'C');
-    $pdf->Ln(10);
+        // Titre de la facture
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->Cell(0, 10, 'Facture de Paiement', 0, 1, 'C');
+        $pdf->Ln(10);
 
-    // Informations de la facture
-    $pdf->SetFont('Arial', '', 12);
-    $pdf->Cell(0, 10, "Facture ID: {$factureId}", 0, 1);
-    $pdf->Cell(0, 10, "Date: {$date}", 0, 1);
-    $pdf->Cell(0, 10, "Client: {$client->nom} {$client->prenom}", 0, 1);
-    $pdf->Cell(0, 10, "Montant versé: {$montantVerse} F CFA", 0, 1);
-    $pdf->Cell(0, 10, "Montant restant: {$dette->montant_restant} F CFA", 0, 1);
-    $pdf->Ln(10);
+        // Informations de la facture
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->Cell(0, 10, "Facture ID: {$factureId}", 0, 1);
+        $pdf->Cell(0, 10, "Date: {$date}", 0, 1);
+        $pdf->Cell(0, 10, "Client: {$client->nom} {$client->prenom}", 0, 1);
+        $pdf->Cell(0, 10, "Montant versé: {$montantVerse} F CFA", 0, 1);
+        $pdf->Cell(0, 10, "Montant restant: {$dette->montant_restant} F CFA", 0, 1);
+        $pdf->Ln(10);
 
-    // Ajouter plus de détails selon vos besoins...
+        // Ajouter plus de détails selon vos besoins...
 
-    // Sauvegarde du PDF
-    $pdf->Output('F', $filePath);
+        // Sauvegarde du PDF
+        $pdf->Output('F', $filePath);
 
-    // Retourner le nom du fichier pour l'affichage dans la vue HTML
-    return $fileName;
-}
+        // Retourner le nom du fichier pour l'affichage dans la vue HTML
+        return $fileName;
+    }
 
     public function SuiviDette($clientId)
     {
@@ -246,6 +247,30 @@ class PaiementController extends Controller
             readfile($filePath);
         } else {
             echo "ID de dette manquant";
+        }
+    }
+
+    // PaiementController.php
+
+    public function afficherListePaiements()
+    {
+        $detteId = $_GET['idDette'] ?? null;
+
+        if ($detteId) {
+            // Récupérer la dette depuis le modèle
+            $dette = $this->detteModel->obtenirDetteParId($detteId);
+
+            if ($dette) {
+                // Récupérer les paiements associés à cette dette depuis le modèle
+                $paiements = $this->paiementModel->obtenirPaiementsParDetteId($detteId);
+
+                // Afficher la vue avec la liste des paiements
+                $this->renderView('listePaiements', ['dette' => $dette, 'paiements' => $paiements]);
+            } else {
+                $this->renderView('listePaiements', ['error' => 'Aucune dette trouvée pour cet ID']);
+            }
+        } else {
+            $this->renderView('listePaiements', ['error' => 'ID de dette manquant']);
         }
     }
 }

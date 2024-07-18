@@ -1,0 +1,44 @@
+app:
+  name: 'Application de gestion de crédits pour une boutique'
+  version: '1.0.0'
+
+database:
+  driver: 'mysql'
+  host: '%env(DB_HOST)%'
+  port: '%env(DB_PORT)%'
+  name: '%env(DB_DATABASE)%'
+  user: '%env(DB_USERNAME)%'
+  pass: '%env(DB_PASSWORD)%'
+
+paths:
+  controllers: 'src/App/Controller'
+  models: 'src/App/Model'
+  views: 'Views'
+  uploads: '%env(UPLOAD_DIR)%'
+  root: '%env(ROOT)%'
+  # webroot: '%env(WEBROOT)%'
+
+routes:
+  # api: 'Routes/Api.php'
+  web: 'routes/Web.php'
+
+
+
+DB_DSN: mysql:host=localhost;dbname=gestion_boutique _credit
+DB_USER: ibrahima
+DB_PASS: Sonatel@2024
+APP_ENV: development
+APP_DEBUG: true
+ROOT: /var/www/html/Diallo_Lebalmaa1/
+WEBROOT: http://www.barry_lebalma.ibrahimasory.diallo.com:801/
+Model : Src\Core\Model\Model
+MysqlDatabase: Src\Core\Database\MysqlDatabase
+Validaror: Src\Core\Validators\Validator
+Session: Src\Core\Sessions\Session
+Controlle: Src\Core\Controllers\Controller
+Entity: Src\Core\Entity\Entity
+Errors: Src\Core\Errors\ErrorControlle
+Auth: Src\Core\Auth\Authorize
+Files: Src\Core\Files\Files
+Routes: Src\Core\Routes\Route
+Security: Src\Core\Security\SecurityDB

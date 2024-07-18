@@ -40,11 +40,19 @@ $router->get('/payer-dette', ['Controller' => 'PaiementController', 'action' => 
 $router->post('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'payerDette']);
 
 // Route pour ajouter une nouvelle dette
+$router->get('/nouvelle-dette', ['Controller' => 'DetteController', 'action' => 'newDette']);
+$router->post('/nouvelle-dette', ['Controller' => 'DetteController', 'action' => 'newDette']);
+
 $router->get('/nouvelle-dette', ['Controller' => 'DetteController', 'action' => 'nouvelleDette']);
-$router->get('/nouvelle-dette/client/{id}', ['Controller' => 'DetteController', 'action' => 'nouvelleDette']);
+
+$router->post('/ajouter', ['Controller' => 'DetteController', 'action' => 'nouvelleDette']);
+
 
 // Route pour afficher le détail d'une dette
 $router->get('/suivi-dette-', ['Controller' => 'DetteController', 'action' => 'detailDette']);
+
+// Exemple de route pour la liste des paiements
+$router->get('/liste-paiements', ['Controller' => 'PaiementController', 'action' => 'afficherListePaiements']);
 
 // Dispatch de la route actuelle
 $router->routePage($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

@@ -8,6 +8,7 @@ use Src\App\Model\ArticleModel;
 use Src\Core\Controller;
 use Src\Core\Database\MysqlDatabase;
 use ReflectionClass;
+use Exception;
 
 class DetteController extends Controller
 {
@@ -19,7 +20,7 @@ class DetteController extends Controller
     {
         $pdo = require __DIR__ . '/../../../config/config.php';
         $database = new MysqlDatabase($pdo);
-        $this->detteModel = new DetteModel($database);
+        $this->detteModel = new DetteModel($database, $pdo);
         $this->clientModel = new ClientModel($database);
         $this->articleModel = new ArticleModel($pdo);
     }
@@ -28,7 +29,7 @@ class DetteController extends Controller
     {
         $clientId = $_GET['client_id'] ?? null;
         $page = $_GET['page'] ?? 1; // Par défaut, afficher la page 1
-        $itemsPerPage = 5; // Nombre d'éléments par page
+        $itemsPerPage = 15; // Nombre d'éléments par page
 
         if ($clientId) {
             $client = $this->clientModel->obtenirClientParId($clientId);
@@ -228,4 +229,60 @@ class DetteController extends Controller
             }
         }
     }
+
+    public function listePaiements()
+    {
+        $detteId = $_GET['idDette'] ?? null;
+
+        if ($detteId) {
+            $dette = $this->detteModel->obtenirDetteParId($detteId);
+
+            if ($dette !== null) {
+                $paiements = $this->detteModel->obtenirPaiementsParDetteId($detteId); // Assurez-vous que cette méthode retourne les paiements
+
+                $this->renderView('listePaiements', [
+                    'dette' => $dette,
+                    'paiements' => $paiements
+                ]);
+                return;
+            } else {
+                $error = 'Dette non trouvée';
+            }
+        } else {
+            $error = 'ID de dette manquant';
+        }
+
+        // Afficher la vue avec l'erreur si quelque chose ne va pas
+        $this->renderView('listePaiements', ['error' => $error]);
+    }
+
+    // public function validerPanier()
+    // {
+    //     // Récupération des données nécessaires pour la validation
+    //     session_start();
+    //     $panier = $_SESSION['panier'] ?? [];
+    //     $client_id = $_SESSION['client_id'] ?? null;
+
+    //     if (empty($panier) || !$client_id) {
+    //         $_SESSION['message'] = 'Erreur : Panier vide ou client non défini.';
+    //         header('Location: /'); // Rediriger vers la page d'accueil ou une autre page appropriée
+    //         exit;
+    //     }
+
+    //     // Appel au modèle pour valider la dette
+    //     try {
+    //         $this->detteModel->validerDette($client_id, $panier);
+
+    //         // Détruire la session et réinitialiser le panier
+    //         unset($_SESSION['panier']);
+    //         $_SESSION['message'] = 'La dette a été validée avec succès.';
+    //         header('Location: /'); // Rediriger vers la page d'accueil ou une autre page appropriée
+    //         exit;
+    //     } catch (Exception $e) {
+    //         $_SESSION['message'] = 'Erreur lors de la validation de la dette : ' . $e->getMessage();
+    //         header('Location: /'); // Rediriger vers la page d'accueil ou une autre page appropriée
+    //         exit;
+    //     }
+    // }
+
 }

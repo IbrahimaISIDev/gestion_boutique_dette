@@ -7,15 +7,20 @@ namespace Src\App\Model;
 use Src\Core\Database\MysqlDatabase;
 use Src\App\Entity\DetteEntity;
 use Src\App\Entity\ArticleEntity; // Assurez-vous d'importer la classe ArticleEntity
+use PDO;
+use Exception;
 
 class DetteModel
 {
     private $db;
+    private $pdo;
 
-    public function __construct(MysqlDatabase $db)
+    public function __construct(MysqlDatabase $db, PDO $pdo)
     {
         $this->db = $db;
+        $this->pdo = $pdo;
     }
+
 
     // Méthode pour obtenir le total des dettes
     public function getTotalDettes()
@@ -27,11 +32,11 @@ class DetteModel
     }
 
     // Méthode pour créer une nouvelle dette pour un client
-    public function creerNouvelleDette($clientId, $montantInitial, $dateCreation)
-    {
-        $sql = "INSERT INTO dettes (client_id, montant_initial, montant_restant, date_creation) VALUES (?, ?, ?, ?)";
-        return $this->db->query($sql, [$clientId, $montantInitial, $montantInitial, $dateCreation]);
-    }
+    // public function creerNouvelleDette($clientId, $montantInitial, $dateCreation)
+    // {
+    //     $sql = "INSERT INTO dettes (client_id, montant_initial, montant_restant, date_creation) VALUES (?, ?, ?, ?)";
+    //     return $this->db->query($sql, [$clientId, $montantInitial, $montantInitial, $dateCreation]);
+    // }
 
     // Méthode pour obtenir les détails d'une dette par son ID de dette
     /**
@@ -153,17 +158,94 @@ class DetteModel
             return 0;
         }
     }
-     // Ajoutez également votre méthode getDetteByClientId ici
-     public function getDetteByClientId($clientId)
-     {
-         try {
-             $sql = "SELECT * FROM dettes WHERE client_id = :client_id";
-             $stmt = $this->db->getPDO()->prepare($sql);
-             $stmt->execute(['client_id' => $clientId]);
-             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-         } catch (\PDOException $e) {
-             error_log('Erreur lors de la récupération des dettes du client: ' . $e->getMessage());
-             return [];
-         }
-     }
+    // Ajoutez également votre méthode getDetteByClientId ici
+    public function getDetteByClientId($clientId)
+    {
+        try {
+            $sql = "SELECT * FROM dettes WHERE client_id = :client_id";
+            $stmt = $this->db->getPDO()->prepare($sql);
+            $stmt->execute(['client_id' => $clientId]);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            error_log('Erreur lors de la récupération des dettes du client: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function obtenirPaiementsParDetteId($detteId)
+    {
+        $query = "SELECT * FROM paiement WHERE dette_id = ?";
+        $params = [$detteId];
+
+        return $this->db->query($query, $params)->fetchAll(); // Utilisez votre méthode de requête appropriée
+    }
+    public function ajouterArticleDette(int $detteId, int $articleId, int $quantite)
+    {
+        // Récupérer le prix unitaire de l'article
+        $sqlArticle = "SELECT prix_unitaire FROM articles WHERE id = ?";
+        $stmt = $this->db->query($sqlArticle, [$articleId]);
+        $article = $stmt->fetch();
+
+        if (!$article) {
+            throw new \Exception("Article non trouvé.");
+        }
+
+        $prixUnitaire = $article['prix_unitaire'];
+        $montant = $prixUnitaire * $quantite;
+
+        // Insérer les détails de la dette
+        $sql = "INSERT INTO details_dette (dette_id, article_id, quantite, prix_unitaire, montant) VALUES (?, ?, ?, ?, ?)";
+        $this->db->query($sql, [$detteId, $articleId, $quantite, $prixUnitaire, $montant]);
+
+        // Mettre à jour le montant restant de la dette
+        $this->mettreAJourMontantRestant($detteId, $montant);
+    }
+
+    public function creerNouvelleDette($clientId, $montantInitial)
+    {
+        $sql = "INSERT INTO dettes (client_id, montant_initial, montant_restant, date_creation) VALUES (?, ?, ?, NOW())";
+        $this->db->query($sql, [$clientId, $montantInitial, $montantInitial]);
+        return $this->db->getPDO()->lastInsertId(); // Retourne l'ID de la nouvelle dette
+    }
+
+    public function validerDette($client_id, $articles)
+    {
+        try {
+            // Démarrer la transaction
+            $this->pdo->beginTransaction();
+
+            // Calculer le montant restant du client
+            $sqlMontantRestant = "SELECT SUM(montant_restant) AS total_restant FROM dettes WHERE client_id = :client_id";
+            $stmtMontantRestant = $this->pdo->prepare($sqlMontantRestant);
+            $stmtMontantRestant->execute(['client_id' => $client_id]);
+            $montantRestant = $stmtMontantRestant->fetchColumn();
+
+            // Insertion de la dette
+            $stmtInsertDette = $this->pdo->prepare("INSERT INTO dettes (client_id, montant_restant, date_creation) VALUES (:client_id, :montant_restant, NOW())");
+            $stmtInsertDette->execute(['client_id' => $client_id, 'montant_restant' => $montantRestant]);
+
+            $detteId = $this->pdo->lastInsertId();
+
+            // Insertion des articles dans la table de relation dette_articles
+            $stmtInsertArticles = $this->pdo->prepare("INSERT INTO dette_articles (dette_id, article_id, quantite, prix_unitaire) VALUES (:dette_id, :article_id, :quantite, :prix_unitaire)");
+
+            foreach ($articles as $item) {
+                $stmtInsertArticles->execute([
+                    'dette_id' => $detteId,
+                    'article_id' => $item['id'],
+                    'quantite' => $item['quantite'],
+                    'prix_unitaire' => $item['prix_unitaire']
+                ]);
+            }
+
+            // Commit de la transaction
+            $this->pdo->commit();
+
+            return true;
+        } catch (Exception $e) {
+            // Rollback en cas d'erreur
+            $this->pdo->rollBack();
+            throw new Exception('Erreur lors de la validation de la dette : ' . $e->getMessage());
+        }
+    }
 }
