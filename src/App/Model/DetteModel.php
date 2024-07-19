@@ -248,4 +248,27 @@ class DetteModel
             throw new Exception('Erreur lors de la validation de la dette : ' . $e->getMessage());
         }
     }
+    // Model/DetteModel.php
+
+    // Model/DetteModel.php
+
+    public function getTotalCountByClientId($clientId)
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM dettes WHERE client_id = :client_id");
+        $stmt->bindParam(':client_id', $clientId, PDO::PARAM_INT);
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
+    // Model/DetteModel.php
+
+    public function getDettesByClientId($clientId, $offset, $limit)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM dettes WHERE client_id = :client_id LIMIT :limit OFFSET :offset");
+        $stmt->bindParam(':client_id', $clientId, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_CLASS, '\Src\App\Entity\DetteEntity');
+    }
 }

@@ -37,6 +37,4 @@ class MysqlDatabase
     {
         return $this->pdo;
     }
-
-
 }

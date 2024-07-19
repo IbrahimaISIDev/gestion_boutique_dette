@@ -28,44 +28,45 @@ class DetteController extends Controller
     public function suiviDette()
     {
         $clientId = $_GET['client_id'] ?? null;
-        $page = $_GET['page'] ?? 1; // Par défaut, afficher la page 1
-        $itemsPerPage = 15; // Nombre d'éléments par page
-
+        $page = $_GET['page'] ?? 1; // Default to page 1
+        $itemsPerPage = 5; // Number of items per page
+    
         if ($clientId) {
             $client = $this->clientModel->obtenirClientParId($clientId);
             if ($client !== null) {
-                $dettes = $this->detteModel->obtenirDettesParClientId($clientId);
-
-                if (is_array($dettes) && count($dettes) > 0) {
-                    $totalItems = count($dettes);
-                    $totalPages = ceil($totalItems / $itemsPerPage);
-
-                    $start = ($page - 1) * $itemsPerPage;
-                    $pagedDettes = array_slice($dettes, $start, $itemsPerPage);
-
-                    $this->renderView('suiviDette', [
-                        'client' => $client,
-                        'dettes' => $pagedDettes,
-                        'pagination' => [
-                            'totalPages' => $totalPages,
-                            'currentPage' => $page,
-                            'itemsPerPage' => $itemsPerPage,
-                        ],
-                    ]);
-                    return;
-                } else {
-                    $error = "Aucune dette trouvée pour ce client";
-                }
+                // Fetch total count of dettes for the client
+                $totalItems = $this->detteModel->getTotalCountByClientId($clientId);
+    
+                // Calculate total pages
+                $totalPages = ceil($totalItems / $itemsPerPage);
+    
+                // Calculate the offset for the current page
+                $offset = ($page - 1) * $itemsPerPage;
+    
+                // Fetch the dettes for the current page
+                $dettes = $this->detteModel->getDettesByClientId($clientId, $offset, $itemsPerPage);
+    
+                // Render the view with paginated data
+                $this->renderView('suiviDette', [
+                    'client' => $client,
+                    'dettes' => $dettes,
+                    'pagination' => [
+                        'totalPages' => $totalPages,
+                        'currentPage' => $page,
+                        'itemsPerPage' => $itemsPerPage,
+                    ],
+                ]);
+                return;
             } else {
                 $error = "Client non trouvé";
             }
         } else {
             $error = "ID du client manquant";
         }
-
+    
         $this->renderView('suiviDette', ['error' => $error]);
     }
-
+    
     public function details()
     {
         if (isset($_POST['idDette'])) {
@@ -255,6 +256,9 @@ class DetteController extends Controller
         // Afficher la vue avec l'erreur si quelque chose ne va pas
         $this->renderView('listePaiements', ['error' => $error]);
     }
+
+    // Controller/DetteController.php
+
 
     // public function validerPanier()
     // {

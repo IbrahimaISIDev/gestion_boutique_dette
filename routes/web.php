@@ -32,8 +32,11 @@ $router->post('/details-dette/client/{id}', ['Controller' => 'DetteController', 
 
 // Route pour générer une facture
 $router->post('/generer-facture', ['Controller' => 'PaiementController', 'action' => 'genererFacture']);
+// Route pour visualiser la facture au niveau du navigateur 
 $router->get('/visualiser-facture', ['Controller' => 'PaiementController', 'action' => 'visualiserFacture']);
-$router->get('/telecharger-facture', ['Controller' => 'PaiementController', 'action' => 'telechargerFacture']);
+
+$router->get('/visualiser-facture', ['Controller' => 'PaiementController', 'action' => 'visualiserFacture']);
+//$router->get('/telecharger-facture', ['Controller' => 'PaiementController', 'action' => 'telechargerFacture']);
 
 // Routes pour le paiement de la dette
 $router->get('/payer-dette', ['Controller' => 'PaiementController', 'action' => 'afficherFormulairePaiement']);

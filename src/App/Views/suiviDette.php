@@ -70,39 +70,29 @@
                                             <button type="submit" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded transition duration-300">Détails</button>
                                         </form>
                                         <a href="/payer-dette?idDette=<?= htmlspecialchars($dette->getId()) ?>" class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-300">Payer</a>
-                                        <!-- <form action="/liste-paiements/<?= htmlspecialchars($dette->getId()) ?>" method="get" class="inline">
+                                        <form action="/liste-paiements/<?= htmlspecialchars($dette->getId()) ?>" method="get" class="inline">
                                             <button type="submit" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition duration-300">Paiements</button>
-                                        </form> -->
+                                        </form> 
 
                                     </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-
                 </table>
             </div>
 
             <!-- Pagination controls -->
-            <div class="flex justify-between items-center mt-6">
-                <form action="" method="get" class="inline">
-                    <input type="hidden" name="client_id" value="<?= $client->getId() ?>">
-                    <input type="hidden" name="date" value="<?= $_GET['date'] ?? '' ?>">
-                    <input type="hidden" name="status" value="<?= $_GET['status'] ?? '' ?>">
-                    <button type="submit" name="page" value="<?= max(1, $pagination['currentPage'] - 1) ?>" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l transition duration-300">
-                        Précédent
-                    </button>
-                </form>
-                <form action="" method="get" class="inline">
-                    <input type="hidden" name="client_id" value="<?= $client->getId() ?>">
-                    <input type="hidden" name="date" value="<?= $_GET['date'] ?? '' ?>">
-                    <input type="hidden" name="status" value="<?= $_GET['status'] ?? '' ?>">
-                    <button type="submit" name="page" value="<?= min($pagination['totalPages'], $pagination['currentPage'] + 1) ?>" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r transition duration-300">
-                        Suivant
-                    </button>
-                </form>
+            <div class="flex justify-center items-center mt-6">
+                <?php for ($i = 1; $i <= $pagination['totalPages']; $i++) : ?>
+                    <form action="" method="get" class="inline">
+                        <input type="hidden" name="client_id" value="<?= htmlspecialchars($client->id) ?>">
+                        <button type="submit" name="page" value="<?= $i ?>" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 mx-1 rounded transition duration-300 <?= $pagination['currentPage'] == $i ? 'bg-blue-500 text-white' : '' ?>">
+                            <?= $i ?>
+                        </button>
+                    </form>
+                <?php endfor; ?>
             </div>
-
         <?php else : ?>
             <p class="text-red-500 text-center text-xl"><?= $error ?? 'Une erreur est survenue' ?></p>
         <?php endif; ?>
@@ -110,7 +100,7 @@
 
     <!-- Footer -->
     <footer class="bg-gray-800 text-white text-center py-4 mt-8">
-        &copy; <?= date('Y') ?> Suivi des Dettes. Tous droits réservés.
+        &copy; <?= date('Y-m-d') ?> Suivi des Dettes. Tous droits réservés.
     </footer>
 </body>
 

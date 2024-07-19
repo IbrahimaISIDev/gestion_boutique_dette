@@ -62,11 +62,11 @@ class PaiementController extends Controller
                         $this->detteModel->mettreAJourMontantRestant($detteId, $nouveauMontantRestant);
                         $this->detteModel->mettreAJourMontantVerser($detteId, $montantVerse);
 
-                        // Générer la facture
-                        $this->genererFacture($dette, $montantVerse);
+                        // Générer la facture et obtenir le nom du fichier
+                        $fileName = $this->genererFacture($dette, $montantVerse);
 
-                        // Redirection vers les détails de la dette après le paiement
-                        header('Location: /details-dette?idDette=' . $detteId);
+                        // Redirection vers la page de visualisation de la facture
+                        header('Location: /visualiser-facture?idDette=' . $detteId . '&fileName=' . $fileName);
                         exit;
                     } else {
                         $error = 'Le montant versé ne peut pas être supérieur au montant restant';
@@ -98,6 +98,7 @@ class PaiementController extends Controller
         }
     }
 
+
     private function genererFacture($dette, $montantVerse)
     {
         $client = $this->clientModel->obtenirClientParId($dette->client_id);
@@ -121,7 +122,7 @@ class PaiementController extends Controller
         $pdf->Cell(0, 10, "Date: {$date}", 0, 1);
         $pdf->Cell(0, 10, "Client: {$client->nom} {$client->prenom}", 0, 1);
         $pdf->Cell(0, 10, "Montant versé: {$montantVerse} F CFA", 0, 1);
-        $pdf->Cell(0, 10, "Montant restant: {$dette->montant_restant} F CFA", 0, 1);
+        $pdf->Cell(0, 10, "Montant restant: " . ($dette->montant_restant - $montantVerse) . " F CFA", 0, 1);
         $pdf->Ln(10);
 
         // Ajouter plus de détails selon vos besoins...
@@ -185,24 +186,20 @@ class PaiementController extends Controller
     public function visualiserFacture()
     {
         $detteId = $_GET['idDette'] ?? null;
+        $fileName = $_GET['fileName'] ?? null;
 
-        if ($detteId) {
-            $dette = $this->detteModel->obtenirDetteParId($detteId);
-            $client = $this->clientModel->obtenirClientParId($dette->client_id);
+        if ($detteId && $fileName) {
+            $filePath = __DIR__ . '/../../../public/factures/' . $fileName;
 
-            $factureId = uniqid();
-            $date = date('Y-m-d H:i:s');
-            $montantVerse = $dette->montant_verser; // Exemple, vous pouvez ajuster en fonction de vos besoins
-
-            $this->renderView('facture', [
-                'factureId' => $factureId,
-                'date' => $date,
-                'client' => $client,
-                'montantVerse' => $montantVerse,
-                'dette' => $dette
-            ]);
+            if (file_exists($filePath)) {
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . $fileName . '"');
+                readfile($filePath);
+            } else {
+                echo "Facture non trouvée";
+            }
         } else {
-            echo "ID de dette manquant";
+            echo "ID de dette ou nom de fichier manquant";
         }
     }
 
