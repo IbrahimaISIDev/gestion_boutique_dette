@@ -120,7 +120,7 @@ class PaiementController extends Controller
         $pdf->SetFont('Arial', '', 12);
         $pdf->Cell(0, 10, "Facture ID: {$factureId}", 0, 1);
         $pdf->Cell(0, 10, "Date: {$date}", 0, 1);
-        $pdf->Cell(0, 10, "Client: {$client->nom} {$client->prenom}", 0, 1);
+        $pdf->Cell(0, 10, "Client: {$client->prenom} {$client->nom} ", 0, 1);
         $pdf->Cell(0, 10, "Montant versé: {$montantVerse} F CFA", 0, 1);
         $pdf->Cell(0, 10, "Montant restant: " . ($dette->montant_restant - $montantVerse) . " F CFA", 0, 1);
         $pdf->Ln(10);
